@@ -166,15 +166,15 @@ def DoPlotsSplit(label_bp, control_bp , label_nbp, control_nbp):
     #plt.savefig('scatterplot_bp.png')
 
     
-def CreatingCSVSplit(test_bp, preds_bp, test_nbp, preds_nbp):
+def CreatingCSVSplit(test_bp1, preds_bp, test_nbp1, preds_nbp):
     #print 'creating dataframes with outputs and merging them'
-    preds_bp = pd.DataFrame({"id": test_bp['id'], "cost": preds_bp})
-    preds_nbp = pd.DataFrame({"id": test_nbp['id'], "cost": preds_nbp})
+    preds_bp = pd.DataFrame({"id": test_bp1['id'], "cost": preds_bp})
+    preds_nbp = pd.DataFrame({"id": test_nbp1['id'], "cost": preds_nbp})
 
     dfs = [preds_bp, preds_nbp]
     preds = pd.concat(dfs)
+    preds['cost'] = preds['cost'].abs()
     #print 'creating csv file'
-    
     preds.to_csv('benchmark.csv', index=False)
 
 def CreatingCSV(test, preds):
@@ -189,7 +189,6 @@ def CreatingCSV(test, preds):
 if __name__ == "__main__":
     t0 = time.time()
     plt.style.use('ggplot')
-    #print 'Reading csvs'
     CSVMap = loadcsv()
     train_names = CSVMap['train_set'].columns.values.tolist()
     for key in CSVMap:
@@ -201,7 +200,6 @@ if __name__ == "__main__":
                         CSVMap['train_set'] = pd.merge(CSVMap['train_set'], CSVMap[key], on=nam)
                         CSVMap['test_set'] = pd.merge(CSVMap['test_set'], CSVMap[key], on=nam)
 
-    #print 'adding extra variables'                    
     CSVMap['train_set']['year'] = CSVMap['train_set'].quote_date.dt.year
     CSVMap['train_set']['month'] = CSVMap['train_set'].quote_date.dt.month
     CSVMap['train_set']['day'] = CSVMap['train_set'].quote_date.dt.day
@@ -212,12 +210,10 @@ if __name__ == "__main__":
 
     CSVMap['train_set'] = CSVMap['train_set'].drop(['quote_date'], axis = 1)
     CSVMap['test_set'] = CSVMap['test_set'].drop(['quote_date'], axis = 1)    
-    ##print CSVMap['train_set']
 
     train_names = CSVMap['train_set'].columns.values.tolist()
     test_names = CSVMap['test_set'].columns.values.tolist()
 
-    #print 'cleaning'
     CSVMap['train_set']['bracket_pricing'].replace('Yes','1', regex= True,  inplace=True)
     CSVMap['test_set']['bracket_pricing'].replace('Yes','1', regex= True,  inplace=True)
     CSVMap['train_set']['bracket_pricing'].replace('No','0', regex= True,  inplace=True)
@@ -262,15 +258,6 @@ if __name__ == "__main__":
                                                     CSVMap['test_set']['quantity_8'] 
                                                     )
 
-    #print CSVMap['train_set'].columns.values.tolist()
-    #print CSVMap['train_set']['end_x_1x']
-    #CSVMap['train_set'] = CSVMap['train_set'].drop(['quantity_4', 'quantity_5', 'quantity_6', 'quantity_7', 'quantity_8'], axis=1)        
-    #CSVMap['test_set'] = CSVMap['test_set'].drop(['quantity_4', 'quantity_5', 'quantity_6', 'quantity_7', 'quantity_8'], axis=1)        
-
-    #print CSVMap['train_set']['other']
-    
-    #train_names = CSVMap['train_set'].columns.values.tolist()
-    #test_names = CSVMap['test_set'].columns.values.tolist()
 
     train_names = [ 'supplier' , 'component_id_1', 'component_id_2', 'component_id_3', 'component_id_4', 'component_id_5', 'component_id_6', 'component_id_7', 'component_id_8',  'material_id', 'end_a', 'end_x', 'spec1', 'spec2', 'spec3', 'spec4', 'spec5', 'spec6', 'spec7', 'spec8', 'spec9', 'spec10', 'other'] 
         
@@ -291,8 +278,6 @@ if __name__ == "__main__":
     #    temp = {column: pd.Series(listemp),
     #            column + '_freq': pd.Series(listempe)}
     #    temp1 = pd.DataFrame(temp)
-    #    CSVMap['train_set'] = pd.merge(CSVMap['train_set'], temp1, on = column)
-    #    CSVMap['train_set'] = CSVMap['train_set'].drop([column], axis=1)
 
         
     for column in train_names:
@@ -315,157 +300,245 @@ if __name__ == "__main__":
         temp1 = pd.DataFrame(temp)
         CSVMap['test_set'] = pd.merge(CSVMap['test_set'], temp1, on = column)
         CSVMap['test_set'] = CSVMap['test_set'].drop([column], axis=1)
+        CSVMap['train_set'] = pd.merge(CSVMap['train_set'], temp1, on = column)
+        CSVMap['train_set'] = CSVMap['train_set'].drop([column], axis=1)
 
 
     #print 'getting cost'
-    #train_names = CSVMap['train_set'].columns.values.tolist()
+    train_names = CSVMap['train_set'].columns.values.tolist()
     #print train_names
-    #for name in train_names:
-    ##    ##print name
-    #    total = len(CSVMap['train_set'][name])
-    #    valid = len(CSVMap['train_set'][CSVMap['train_set'][name] > 0])
-    #    per = float(valid)*100./total
-    #    if(per < 5):
-    #        print per, name
-    #        CSVMap['train_set'] = CSVMap['train_set'].drop([name], axis = 1)
-    #        CSVMap['test_set'] = CSVMap['test_set'].drop([name], axis = 1)            
+    for name in train_names:
+    #    ##print name
+        total = len(CSVMap['train_set'][name])
+        valid = len(CSVMap['train_set'][CSVMap['train_set'][name] > 0])
+        per = float(valid)*100./total
+        if(per < 5):
+            print per, name
+            CSVMap['train_set'] = CSVMap['train_set'].drop([name], axis = 1)
+            CSVMap['test_set'] = CSVMap['test_set'].drop([name], axis = 1)            
 
 
+    #print CSVMap['train_set']['bracket_pricing']
+    train_bp = CSVMap['train_set'][CSVMap['train_set']['bracket_pricing'] == 1 ]
+    train_nbp = CSVMap['train_set'][CSVMap['train_set']['bracket_pricing'] == 0 ]
+
+    test_bp = CSVMap['test_set'][CSVMap['test_set']['bracket_pricing'] == 1 ]
+    test_nbp = CSVMap['test_set'][CSVMap['test_set']['bracket_pricing'] == 0 ]    
+    #print train_nbp
+
+    train_bp = train_bp.drop(['bracket_pricing'], axis=1)
+    train_nbp = train_nbp.drop(['bracket_pricing'], axis=1)
+    test_bp = test_bp.drop(['bracket_pricing'], axis=1)
+    test_nbp = test_nbp.drop(['bracket_pricing'], axis=1)    
+    
+    idx_bp = test_bp['id']
+    test_bp = test_bp.drop(['id'], axis = 1)    
+    atest_bp = np.array(test_bp)
+    xgtest_bp = xgb.DMatrix(atest_bp, missing = np.nan)    
+
+    idx_nbp = test_nbp['id']
+    test_nbp = test_nbp.drop(['id'], axis = 1)    
+    atest_nbp = np.array(test_nbp)
+    xgtest_nbp = xgb.DMatrix(atest_nbp, missing = np.nan)    
+
+    #print idx_bp
+    
+    #idx = CSVMap['test_set']['id']
+    #CSVMap['test_set'] = CSVMap['test_set'].drop(['id'], axis = 1)    
+    #test = CSVMap['test_set']
+    #atest = np.array(test)
+    #xgtest = xgb.DMatrix(atest, missing = np.nan)    
+
+    params, plst = SettingsForXGBoost( 0.8, 0.3, 5, 30, 8)
+
+    num_rounds = 2000
+    rounds = 10
+
+    rows_bp = random.sample(train_bp.index, 15000)
+    df_train_bp = train_bp.ix[rows_bp]
+    df_test_bp = train_bp.drop(rows_bp)
+
+    rows_nbp = random.sample(train_nbp.index, 1500)
+    df_train_nbp = train_nbp.ix[rows_nbp]
+    df_test_nbp = train_nbp.drop(rows_nbp)
+     
     #rows = random.sample(CSVMap['train_set'].index, 15000)
     #df_train = CSVMap['train_set'].ix[rows]
     #df_test = CSVMap['train_set'].drop(rows)
+
+    cost_bp = np.log(df_train_bp['cost']+1)
+    cost_test_bp = np.log(df_test_bp['cost']+1)
+    df_train_bp = df_train_bp.drop(['cost'], axis = 1)
+    df_test_bp = df_test_bp.drop(['cost'], axis = 1)
+
+    cost_nbp = np.log(df_train_nbp['cost']+1)
+    cost_test_nbp = np.log(df_test_nbp['cost']+1)
+    df_train_nbp = df_train_nbp.drop(['cost'], axis = 1)
+    df_test_nbp = df_test_nbp.drop(['cost'], axis = 1)
+    
     #cost = np.log(df_train['cost']+1)
     #cost_test = np.log(df_test['cost']+1)
     #df_train = df_train.drop(['cost'], axis = 1)
     #df_test = df_test.drop(['cost'], axis = 1)
 
-    idx = CSVMap['test_set']['id']
-    CSVMap['test_set'] = CSVMap['test_set'].drop(['id'], axis = 1)    
-    test = CSVMap['test_set']
-    atest = np.array(test)
-    xgtest = xgb.DMatrix(atest, missing = np.nan)    
+    data_bp = df_train_bp
+    data_bp = np.array(data_bp)
+    data_test_bp = np.array(df_test_bp)
+    label_bp = np.array(cost_bp)
+    label_test_bp = np.array(cost_test_bp)
 
-    #for i in range(1,10):
-    #0.8, 0.3, 5, 25, 8
-    params, plst = SettingsForXGBoost( 0.8, 0.3, 5, 30, 8)
-
-    num_rounds = 500
-    rounds = 10
-    rows = random.sample(CSVMap['train_set'].index, 15000)
-    df_train = CSVMap['train_set'].ix[rows]
-    df_test = CSVMap['train_set'].drop(rows)
+    data_nbp = df_train_nbp
+    data_nbp = np.array(data_nbp)
+    data_test_nbp = np.array(df_test_nbp)
+    label_nbp = np.array(cost_nbp)
+    label_test_nbp = np.array(cost_test_nbp)
     
-    cost = np.log(df_train['cost']+1)
-    cost_test = np.log(df_test['cost']+1)
-    df_train = df_train.drop(['cost'], axis = 1)
-    df_test = df_test.drop(['cost'], axis = 1)
+    #data = df_train
+    #data = np.array(data)
+    #data_test = np.array(df_test)
+    #label = np.array(cost)
+    #label_test = np.array(cost_test)
     
-    data = df_train
+    xgtrain_bp = xgb.DMatrix(data_bp, label=label_bp, missing = np.nan)        
+    xgcontr_bp = xgb.DMatrix(data_test_bp, missing = np.nan)
+    model_bp = xgb.train(plst, xgtrain_bp, num_rounds)
+
+    xgtrain_nbp = xgb.DMatrix(data_nbp, label=label_nbp, missing = np.nan)        
+    xgcontr_nbp = xgb.DMatrix(data_test_nbp, missing = np.nan)
+    model_nbp = xgb.train(plst, xgtrain_nbp, num_rounds)
+
+    #xgtrain = xgb.DMatrix(data, label=label, missing = np.nan)        
+    #xgcontr = xgb.DMatrix(data_test, missing = np.nan)
+    #model = xgb.train(plst, xgtrain, num_rounds)    
     
-    data = np.array(data)
-    data_test = np.array(df_test)
-    label = np.array(cost)
-    label_test = np.array(cost_test)
-    
-    xgtrain = xgb.DMatrix(data, label=label, missing = np.nan)        
-    xgcontr = xgb.DMatrix(data_test, missing = np.nan)
-    model = xgb.train(plst, xgtrain, num_rounds)
-    
-    preds, control = Predict(xgtest, xgcontr, model)
-    DoPlots(label_test, control )
-    error = control - label_test
-    error = error**2
-    errsum = error.sum()    
+    preds_bp, control_bp = Predict(xgtest_bp, xgcontr_bp, model_bp)
+    DoPlots(label_test_bp, control_bp )
+    error_bp = control_bp - label_test_bp
+    error_bp = error_bp**2
+    errsum_bp = error_bp.sum()    
 
-    for i in range(1,rounds):
-        print i
-        rows = random.sample(CSVMap['train_set'].index, 15000)
-        df_train = CSVMap['train_set'].ix[rows]
-        df_test = CSVMap['train_set'].drop(rows)
-    
-        cost = np.log(df_train['cost']+1)
-        cost_test = np.log(df_test['cost']+1)
-        df_train = df_train.drop(['cost'], axis = 1)
-        df_test = df_test.drop(['cost'], axis = 1)
+    preds_nbp, control_nbp = Predict(xgtest_nbp, xgcontr_nbp, model_nbp)
+    DoPlots(label_test_nbp, control_nbp )
+    error_nbp = control_nbp - label_test_nbp
+    error_nbp = error_nbp**2
+    errsum_nbp = error_nbp.sum()    
 
-        data = df_train
-
-        data = np.array(data)
-        data_test = np.array(df_test)
-        label = np.array(cost)
-        label_test = np.array(cost_test)
-
-        xgtrain = xgb.DMatrix(data, label=label, missing = np.nan)        
-        xgcontr = xgb.DMatrix(data_test, missing = np.nan)
-        model = xgb.train(plst, xgtrain, num_rounds)
-
-        preds1, control1 = Predict(xgtest, xgcontr, model)
-        
-        preds = preds + preds1
-        #control = control + control1
-        error = control - label_test
-        error = error**2
-        errsum = errsum + error.sum()
-
-    preds = preds/rounds
-    errsum = errsum / rounds
-    #control = control/rounds
-    #xgtrain, xgtest, xgcontr = GettingMatrices(data, label, test, data_test)
-
-    #model = Train(plst, xgtrain)
     #preds, control = Predict(xgtest, xgcontr, model)
-    preds = np.exp(preds) - 1
-    #control = control
+    #DoPlots(label_test, control )
     #error = control - label_test
     #error = error**2
-    #errsum = error.sum()
-    #print i
-    print 'Error ' , math.sqrt(errsum)
+    #errsum = error.sum()    
     
-    #preds1 = pd.DataFrame({"id": preds})
-    #control1 = pd.DataFrame({"id": control})
+    for i in range(1,rounds):
+        print i
+        rows_bp = random.sample(train_bp.index, 15000)
+        df_train_bp = train_bp.ix[rows_bp]
+        df_test_bp = train_bp.drop(rows_bp)
 
-    #nrep = 10
-    #
-    #for i in range(1, nrep):
-    #    #print 'Training'
-    #    model = Train(plst, xgtrain)
-    #    #print 'Predicting'
-    #    preds1, control1 = Predict(xgtest, xgcontr, model)
-    #    preds += preds1
-    #    control += control1
-    #    #preds2 = pd.DataFrame({"id": preds})
-    #    #control2 = pd.DataFrame({"id": control})        
-    #    #preds1 = pd.concat([preds2,preds1])
-    #    #control1 = pd.concat([control2,control1])
-    #
-    #    
-    #preds =  preds/nrep
-    #control = control/nrep
-    
-    ##print preds
-    ##print control
+        rows_nbp = random.sample(train_nbp.index, 1500)
+        df_train_nbp = train_nbp.ix[rows_nbp]
+        df_test_nbp = train_nbp.drop(rows_nbp)
         
-    #DoPlots(label_test, control )
-    #print 'Creating csv'
+        #rows = random.sample(CSVMap['train_set'].index, 15000)
+        #df_train = CSVMap['train_set'].ix[rows]
+        #df_test = CSVMap['train_set'].drop(rows)
 
-    #CreatingCSV(test, preds)
-    CreatingCSV(idx, preds)    
+        cost_bp = np.log(df_train_bp['cost']+1)
+        cost_test_bp = np.log(df_test_bp['cost']+1)
+        df_train_bp = df_train_bp.drop(['cost'], axis = 1)
+        df_test_bp = df_test_bp.drop(['cost'], axis = 1)
+        
+        cost_nbp = np.log(df_train_nbp['cost']+1)
+        cost_test_nbp = np.log(df_test_nbp['cost']+1)
+        df_train_nbp = df_train_nbp.drop(['cost'], axis = 1)
+        df_test_nbp = df_test_nbp.drop(['cost'], axis = 1)
+        
+        #cost = np.log(df_train['cost']+1)
+        #cost_test = np.log(df_test['cost']+1)
+        #df_train = df_train.drop(['cost'], axis = 1)
+        #df_test = df_test.drop(['cost'], axis = 1)
+        
+        data_bp = df_train_bp
+        data_bp = np.array(data_bp)
+        data_test_bp = np.array(df_test_bp)
+        label_bp = np.array(cost_bp)
+        label_test_bp = np.array(cost_test_bp)
+        
+        data_nbp = df_train_nbp
+        data_nbp = np.array(data_nbp)
+        data_test_nbp = np.array(df_test_nbp)
+        label_nbp = np.array(cost_nbp)
+        label_test_nbp = np.array(cost_test_nbp)
+        
+        #data = df_train
+        #
+        #data = np.array(data)
+        #data_test = np.array(df_test)
+        #label = np.array(cost)
+        #label_test = np.array(cost_test)
+
+        xgtrain_bp = xgb.DMatrix(data_bp, label=label_bp, missing = np.nan)        
+        xgcontr_bp = xgb.DMatrix(data_test_bp, missing = np.nan)
+        model_bp = xgb.train(plst, xgtrain_bp, num_rounds)
+        
+        xgtrain_nbp = xgb.DMatrix(data_nbp, label=label_nbp, missing = np.nan)        
+        xgcontr_nbp = xgb.DMatrix(data_test_nbp, missing = np.nan)
+        model_nbp = xgb.train(plst, xgtrain_nbp, num_rounds)
+
+        #xgtrain = xgb.DMatrix(data, label=label, missing = np.nan)        
+        #xgcontr = xgb.DMatrix(data_test, missing = np.nan)
+        #model = xgb.train(plst, xgtrain, num_rounds)
+        
+        preds_bp1, control_bp1 = Predict(xgtest_bp, xgcontr_bp, model_bp)
+        preds_nbp1, control_nbp1 = Predict(xgtest_nbp, xgcontr_nbp, model_nbp)        
+        #preds1, control1 = Predict(xgtest, xgcontr, model)
+
+        preds_bp = preds_bp + preds_bp1
+        error_bp = control_bp - label_test_bp
+        error_bp = error_bp**2
+        errsum_bp = errsum_bp + error_bp.sum()
+        
+        preds_nbp = preds_nbp + preds_nbp1
+        error_nbp = control_nbp - label_test_nbp
+        error_nbp = error_nbp**2
+        errsum_nbp = errsum_nbp + error_nbp.sum()
+        
+        #preds = preds + preds1
+        #error = control - label_test
+        #error = error**2
+        #errsum = errsum + error.sum()
+
+    preds_bp = preds_bp/rounds
+    errsum_bp = errsum_bp / rounds
+    preds_bp = np.exp(preds_bp) - 1
+    print 'Error ' , math.sqrt(errsum_bp)
+
+    preds_nbp = preds_nbp/rounds
+    errsum_nbp = errsum_nbp / rounds
+    preds_nbp = np.exp(preds_nbp) - 1
+    print 'Error ' , math.sqrt(errsum_nbp)
+
+    #preds = preds/rounds
+    #errsum = errsum / rounds
+    #preds = np.exp(preds) - 1
+    #print 'Error ' , math.sqrt(errsum)
+
+    preds_bp = pd.DataFrame({"id": idx_bp, "cost": preds_bp})
+    preds_nbp = pd.DataFrame({"id": idx_nbp, "cost": preds_nbp})
+
+    dfs = [preds_bp, preds_nbp]
+    preds = pd.concat(dfs)
+    preds['cost'] = preds['cost'].abs()
+    #print 'creating csv file'
+    preds.to_csv('benchmark.csv', index=False)
+    
+    #CreatingCSVSplit(idx_bp, preds_bp, idx_nbp, preds_nbp)
+    
+    #CreatingCSV(idx, preds)    
     
     t1 = time.time()
     print 'It took ' + str(t1 - t0) + 's'
     print 'Done!'
-    #xgtest = xgb.DMatrix(test)
-    #print data_bp.head()
-    #print data_bp.columns.values.tolist()
-    #mdata_bp = np.array(data_bp)
-    #mdata_bp = mdata_bp.astype(float)
-    #print mdata_bp
-    #label_bp = cost_bp.as_matrix()
-    #print label_bp
-    #
-    #xgmat_bp = xgb.DMatrix(mdata_bp, label_bp, missing = 'NaN')
-    #print xgmat_bp
     
     
     
